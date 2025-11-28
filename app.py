@@ -83,6 +83,10 @@ def analyze_candidates(job_description, cv_text_list):
        - If a match is made based on context rather than exact words, explicitly state this in the "summary" or "pros".
        - Example: "Matched 'Sales' requirement based on described tasks (Upselling/Negotiation), despite job title being 'Support'."
 
+    4. **Risk Assessment:**
+       - **Red Flags:** Check for employment gaps (>6 months), job hopping (>3 jobs in 2 years), or vague descriptions.
+       - **Skill Gaps:** Compare extracted skills vs JD requirements. Be specific about what is missing.
+
     Return the response STRICTLY as a valid JSON list of objects. 
     Do not include any markdown formatting (like ```json ... ```).
     
@@ -103,7 +107,9 @@ def analyze_candidates(job_description, cv_text_list):
         },
         "email": "string (extracted email or empty)",
         "phone": "string (extracted phone or empty)",
-        "linkedin_url": "string (extracted linkedin url or empty)"
+        "linkedin_url": "string (extracted linkedin url or empty)",
+        "red_flags": ["string", "string"],
+        "skill_gaps": ["string", "string"]
     }
     """
 
@@ -284,6 +290,8 @@ def main():
                                         display_df.at[i, 'email'] = ""
                                         display_df.at[i, 'phone'] = ""
                                         display_df.at[i, 'linkedin_url'] = ""
+                                        display_df.at[i, 'red_flags'] = []
+                                        display_df.at[i, 'skill_gaps'] = []
                                         # Keep match_score visible or mask it? User said "blur names and hide reasoning". 
                                         # Usually score is a good teaser. Let's keep score but maybe blur it if requested, 
                                         # but user prompt said "show them in the table but blur the names and hide the reasoning".
@@ -390,6 +398,30 @@ def main():
                                             for con in row.get('cons', []):
                                                 st.markdown(f"- {con}")
                                         
+                                        # Risk Assessment Section
+                                        st.markdown("---")
+                                        st.subheader("⚠️ Risk Assessment")
+                                        
+                                        risk_col1, risk_col2 = st.columns(2)
+                                        
+                                        with risk_col1:
+                                            st.markdown("#### 🚩 Red Flags")
+                                            red_flags = row.get('red_flags', [])
+                                            if red_flags:
+                                                for flag in red_flags:
+                                                    st.error(f"{flag}")
+                                            else:
+                                                st.success("No major red flags detected.")
+                                        
+                                        with risk_col2:
+                                            st.markdown("#### 🧩 Skill Gaps")
+                                            skill_gaps = row.get('skill_gaps', [])
+                                            if skill_gaps:
+                                                for gap in skill_gaps:
+                                                    st.warning(f"Missing: {gap}")
+                                            else:
+                                                st.success("No critical skill gaps detected.")
+
                                         st.markdown("---")
                                         if st.button(f"Generate Interview Questions for {row['name']}", key=f"btn_{index}"):
                                             with st.spinner("Generating questions..."):
