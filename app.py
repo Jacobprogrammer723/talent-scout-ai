@@ -5,6 +5,8 @@ import pandas as pd
 import json
 import google.generativeai as genai
 from dotenv import load_dotenv
+import docx
+import plotly.express as px
 
 import time
 
@@ -12,9 +14,9 @@ import time
 # Load environment variables
 load_dotenv()
 
-def extract_text_from_pdf(file):
+def extract_text_from_file(file):
     """
-    Extracts text from a PDF file.
+    Extracts text from a PDF or DOCX file.
     
     Args:
         file: A file-like object (uploaded file).
@@ -23,13 +25,20 @@ def extract_text_from_pdf(file):
         str: The extracted text.
     """
     try:
-        pdf_reader = pypdf.PdfReader(file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-        return text
+        if file.name.endswith('.pdf'):
+            pdf_reader = pypdf.PdfReader(file)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+            return text
+        elif file.name.endswith('.docx'):
+            doc = docx.Document(file)
+            text = "\n".join([para.text for para in doc.paragraphs])
+            return text
+        else:
+            return ""
     except Exception as e:
-        st.error(f"Error reading PDF: {e}")
+        st.error(f"Error reading file {file.name}: {e}")
         return ""
 
 def analyze_candidates(job_description, cv_text_list):
@@ -68,7 +77,14 @@ def analyze_candidates(job_description, cv_text_list):
         "summary": "string (brief summary of qualifications)",
         "pros": ["string", "string"],
         "cons": ["string", "string"],
-        "years_experience": int (estimated)
+        "years_experience": int (estimated),
+        "radar_scores": {
+            "Technical Skills": int (0-10),
+            "Communication": int (0-10),
+            "Experience": int (0-10),
+            "Culture Fit": int (0-10),
+            "Leadership": int (0-10)
+        }
     }
     """
 
@@ -142,7 +158,7 @@ def main():
     st.title("TalentScout AI")
     st.markdown("### 🚀 Smart Resume Screening & Analysis Tool")
     st.markdown("""
-    Upload multiple resumes (PDF) and let AI rank them against your Job Description.
+    Upload multiple resumes (PDF or DOCX) and let AI rank them against your Job Description.
     Enable **Blind Hiring Mode** to remove bias, and use the **Dashboard** to filter top talent.
     """)
 
@@ -150,7 +166,7 @@ def main():
     job_description = st.text_area("Paste the Job Description here:", height=200)
 
     # File Uploader
-    uploaded_files = st.file_uploader("Upload Resumes (PDF)", type=["pdf"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload Resumes (PDF, DOCX)", type=["pdf", "docx"], accept_multiple_files=True)
     st.caption("🔒 **Privacy First:** No database. Files are processed in memory and discarded.")
 
     if uploaded_files:
@@ -165,7 +181,7 @@ def main():
                 with st.spinner("Analyzing candidates..."):
                     cv_text_list = []
                     for file in uploaded_files:
-                        text = extract_text_from_pdf(file)
+                        text = extract_text_from_file(file)
                         cv_text_list.append({"name": file.name, "text": text})
                     
                     json_response = analyze_candidates(job_description, cv_text_list)
@@ -268,6 +284,27 @@ def main():
                                     else:
                                         st.write(f"**Summary:** {row['summary']}")
                                         
+                                        # Radar Chart
+                                        if 'radar_scores' in row and row['radar_scores']:
+                                            scores = row['radar_scores']
+                                            df_radar = pd.DataFrame(dict(
+                                                r=list(scores.values()),
+                                                theta=list(scores.keys())
+                                            ))
+                                            fig = px.line_polar(df_radar, r='r', theta='theta', line_close=True)
+                                            fig.update_traces(fill='toself')
+                                            fig.update_layout(
+                                                polar=dict(
+                                                    radialaxis=dict(
+                                                        visible=True,
+                                                        range=[0, 10]
+                                                    )
+                                                ),
+                                                showlegend=False,
+                                                height=300
+                                            )
+                                            st.plotly_chart(fig, use_container_width=True)
+
                                         col1, col2 = st.columns(2)
                                         with col1:
                                             st.markdown("#### ✅ Pros")
