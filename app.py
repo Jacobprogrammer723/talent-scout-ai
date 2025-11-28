@@ -41,6 +41,7 @@ def extract_text_from_file(file):
         st.error(f"Error reading file {file.name}: {e}")
         return ""
 
+@st.cache_data
 def analyze_candidates(job_description, cv_text_list):
     """
     Analyzes candidates using Google Gemini.
@@ -99,7 +100,10 @@ def analyze_candidates(job_description, cv_text_list):
             "Experience": int (0-10),
             "Culture Fit": int (0-10),
             "Leadership": int (0-10)
-        }
+        },
+        "email": "string (extracted email or empty)",
+        "phone": "string (extracted phone or empty)",
+        "linkedin_url": "string (extracted linkedin url or empty)"
     }
     """
 
@@ -277,6 +281,9 @@ def main():
                                         display_df.at[i, 'summary'] = "🔒 Upgrade to unlock details..."
                                         display_df.at[i, 'pros'] = []
                                         display_df.at[i, 'cons'] = []
+                                        display_df.at[i, 'email'] = ""
+                                        display_df.at[i, 'phone'] = ""
+                                        display_df.at[i, 'linkedin_url'] = ""
                                         # Keep match_score visible or mask it? User said "blur names and hide reasoning". 
                                         # Usually score is a good teaser. Let's keep score but maybe blur it if requested, 
                                         # but user prompt said "show them in the table but blur the names and hide the reasoning".
@@ -297,7 +304,7 @@ def main():
                             # Visual Dashboard
                             st.subheader("Candidate Dashboard")
                             st.data_editor(
-                                display_df[['name', 'match_score', 'years_experience', 'summary']],
+                                display_df[['name', 'match_score', 'years_experience', 'email', 'linkedin_url']],
                                 column_config={
                                     "match_score": st.column_config.ProgressColumn(
                                         "Match Score",
@@ -306,6 +313,8 @@ def main():
                                         min_value=0,
                                         max_value=100,
                                     ),
+                                    "linkedin_url": st.column_config.LinkColumn("LinkedIn"),
+                                    "email": st.column_config.TextColumn("Email"),
                                 },
                                 hide_index=True,
                                 use_container_width=True
@@ -337,6 +346,17 @@ def main():
                                         st.info("💎 **Pay to see full analysis, pros, cons, and interview questions.**")
                                     else:
                                         st.write(f"**Summary:** {row['summary']}")
+                                        
+                                        # Contact Info
+                                        contact_cols = st.columns(3)
+                                        if row.get('email'):
+                                            contact_cols[0].markdown(f"📧 **Email:** {row['email']}")
+                                        if row.get('phone'):
+                                            contact_cols[1].markdown(f"📱 **Phone:** {row['phone']}")
+                                        if row.get('linkedin_url'):
+                                            contact_cols[2].markdown(f"🔗 [LinkedIn Profile]({row['linkedin_url']})")
+                                        
+                                        st.markdown("---")
                                         
                                         # Radar Chart
                                         if 'radar_scores' in row and row['radar_scores']:
