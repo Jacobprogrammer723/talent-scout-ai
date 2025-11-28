@@ -150,13 +150,19 @@ def main():
     # Sidebar
     with st.sidebar:
         st.title("Settings")
-        api_key = st.text_input("Google API Key", type="password")
-        if api_key:
-             os.environ["GOOGLE_API_KEY"] = api_key
-             genai.configure(api_key=api_key)
-        elif os.getenv("GOOGLE_API_KEY"):
-             genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
         
+        # Secure API Key Handling
+        api_key = None
+        if "GOOGLE_API_KEY" in st.secrets:
+            api_key = st.secrets["GOOGLE_API_KEY"]
+        elif os.getenv("GOOGLE_API_KEY"):
+            api_key = os.getenv("GOOGLE_API_KEY")
+
+        if api_key:
+            genai.configure(api_key=api_key)
+        else:
+            st.error("⚠️ Missing API Key. Please configure `GOOGLE_API_KEY` in Streamlit Secrets.")
+
         st.markdown("---")
         st.subheader("Advanced Options")
         blind_hiring = st.checkbox("Blind Hiring Mode (Hide Names)")
@@ -190,8 +196,8 @@ def main():
         if st.button("Analyze Candidates"):
             if not job_description:
                 st.warning("Please enter a Job Description.")
-            elif not os.getenv("GOOGLE_API_KEY") and not api_key:
-                st.error("Please enter a Google API Key.")
+            elif not api_key:
+                st.error("System Error: API Key not configured.")
             else:
                 with st.spinner("Analyzing candidates..."):
                     cv_text_list = []
