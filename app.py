@@ -93,7 +93,9 @@ def analyze_candidates(job_description, cv_text_list):
     The JSON structure for each candidate must be:
     {
         "name": "string (filename or extracted name)",
-        "match_score": int (0-100),
+        "score_skills": int (0-100),
+        "score_experience": int (0-100),
+        "score_soft_skills": int (0-100),
         "summary": "string (brief summary of qualifications)",
         "pros": ["string", "string"],
         "cons": ["string", "string"],
@@ -181,6 +183,22 @@ def main():
 
         st.markdown("---")
         st.subheader("Advanced Options")
+        
+        # Custom Scoring Weights
+        with st.expander("⚙️ Anpassa Viktning (Scoring Weights)"):
+            w_skills = st.slider("Vikt: Hårda Kunskaper (Skills)", 0, 100, 33)
+            w_exp = st.slider("Vikt: Erfarenhet (Experience)", 0, 100, 33)
+            w_soft = st.slider("Vikt: Potential & Driv (Soft Skills)", 0, 100, 34)
+            
+            # Normalize
+            total_weight = w_skills + w_exp + w_soft
+            if total_weight == 0:
+                norm_skills, norm_exp, norm_soft = 0.33, 0.33, 0.34
+            else:
+                norm_skills = w_skills / total_weight
+                norm_exp = w_exp / total_weight
+                norm_soft = w_soft / total_weight
+
         blind_hiring = st.checkbox("Blind Hiring Mode (Hide Names)")
         min_score = st.slider("Minimum Match Score", 0, 100, 0)
         
