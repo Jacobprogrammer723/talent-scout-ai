@@ -9,11 +9,8 @@ from dotenv import load_dotenv
 import time
 
 # Load environment variables
+# Load environment variables
 load_dotenv()
-
-# Initialize Session State
-if 'is_paid' not in st.session_state:
-    st.session_state['is_paid'] = False
 
 def extract_text_from_pdf(file):
     """
@@ -110,6 +107,10 @@ def generate_interview_questions(candidate_name, job_description, cons_list):
 
 def main():
     st.set_page_config(layout="wide", page_title="TalentScout AI")
+
+    # Initialize Session State
+    if 'is_paid' not in st.session_state:
+        st.session_state['is_paid'] = False
 
     # Top Banner
     if not st.session_state['is_paid']:
