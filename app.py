@@ -289,3 +289,6 @@ def main():
                     except json.JSONDecodeError:
                         st.error("Failed to parse API response. Raw response:")
                         st.text(json_response)
+
+if __name__ == "__main__":
+    main()
