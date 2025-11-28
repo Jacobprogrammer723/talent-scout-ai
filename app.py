@@ -67,6 +67,21 @@ def analyze_candidates(job_description, cv_text_list):
     prompt += """
     \n**Instructions:**
     Analyze each candidate based on the job description.
+    
+    **CRITICAL: Strict Semantic Matching & Context Verification**
+    1. **Strict Synonym Mapping ONLY:**
+       - Treat exact synonyms as matches (e.g., "Remote" == "Distansarbete", "Javascript" == "JS").
+       - Do NOT conflate distinct roles (e.g., "Account Management" != "New Business Sales") unless explicitly supported by context.
+    
+    2. **Context Verification:**
+       - Before matching a skill using a different word, verify the *context* in the CV bullet points.
+       - *Example:* If CV says "Kundansvar" but describes "Upselling and contract negotiation", THEN it matches "Sales".
+       - *Example:* If CV says "Kundansvar" but describes "Technical support and ticket handling", do NOT match it to "Sales".
+    
+    3. **Output Transparency:**
+       - If a match is made based on context rather than exact words, explicitly state this in the "summary" or "pros".
+       - Example: "Matched 'Sales' requirement based on described tasks (Upselling/Negotiation), despite job title being 'Support'."
+
     Return the response STRICTLY as a valid JSON list of objects. 
     Do not include any markdown formatting (like ```json ... ```).
     
