@@ -142,6 +142,12 @@ def main():
     # Initialize Session State
     if 'is_paid' not in st.session_state:
         st.session_state['is_paid'] = False
+    
+    # Rate Limiting State
+    if 'rate_limit_count' not in st.session_state:
+        st.session_state['rate_limit_count'] = 0
+    if 'rate_limit_start_time' not in st.session_state:
+        st.session_state['rate_limit_start_time'] = time.time()
 
     # Top Banner
     if not st.session_state['is_paid']:
@@ -199,6 +205,33 @@ def main():
             elif not api_key:
                 st.error("System Error: API Key not configured.")
             else:
+                # --- SECURITY CHECKS ---
+                
+                # 1. Rate Limiting (10 requests per hour)
+                current_time = time.time()
+                elapsed_time = current_time - st.session_state['rate_limit_start_time']
+                
+                if elapsed_time > 3600: # Reset after 1 hour
+                    st.session_state['rate_limit_count'] = 0
+                    st.session_state['rate_limit_start_time'] = current_time
+                
+                if st.session_state['rate_limit_count'] >= 10:
+                    st.error("⚠️ För många förfrågningar. För att förhindra missbruk har vi en gräns på 10 analyser per timme. Försök igen senare eller kontakta oss för Enterprise-access.")
+                    st.stop()
+                
+                # 2. File Validation
+                if len(uploaded_files) > 50:
+                    st.error("⚠️ Too many files. Maximum 50 files allowed at once.")
+                    st.stop()
+                
+                for file in uploaded_files:
+                    if file.size > 5 * 1024 * 1024: # 5MB
+                        st.error(f"⚠️ File '{file.name}' is too large. Maximum 5MB per file.")
+                        st.stop()
+                
+                # Increment Counter
+                st.session_state['rate_limit_count'] += 1
+                
                 with st.spinner("Analyzing candidates..."):
                     cv_text_list = []
                     for file in uploaded_files:
