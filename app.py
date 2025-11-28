@@ -42,7 +42,7 @@ def extract_text_from_file(file):
         return ""
 
 @st.cache_data
-def analyze_candidates(job_description, cv_text_list):
+def analyze_candidates(job_description, cv_text_list, competitors_list=""):
     """
     Analyzes candidates using Google Gemini.
 
@@ -54,12 +54,16 @@ def analyze_candidates(job_description, cv_text_list):
         str: The raw JSON response from Gemini.
     """
     prompt = f"""
-    You are an expert HR AI assistant. Your task is to screen resumes against a job description.
-
-    **Job Description:**
+    You are an expert HR AI. Analyze the following candidates against this Job Description:
+    
+    JOB DESCRIPTION:
     {job_description}
-
-    **Candidates:**
+    
+    COMPETITOR WATCHLIST (Target Companies):
+    {competitors_list}
+    
+    CANDIDATES (Text extracted from CVs):
+**
     """
     
     for cv in cv_text_list:
@@ -87,6 +91,10 @@ def analyze_candidates(job_description, cv_text_list):
        - **Red Flags:** Check for employment gaps (>6 months), job hopping (>3 jobs in 2 years), or vague descriptions.
        - **Skill Gaps:** Compare extracted skills vs JD requirements. Be specific about what is missing.
 
+    5. **Deep Profiling:**
+       - **Personality Decoder:** Analyze tone/style. Extract 3-4 tags (e.g., "High Agency", "Collaborative", "Analytical", "Leader", "Doer").
+       - **Competitor Check:** Check if the candidate has worked at any company in the COMPETITOR WATCHLIST. Set "is_competitor_match" to true/false.
+
     Return the response STRICTLY as a valid JSON list of objects. 
     Do not include any markdown formatting (like ```json ... ```).
     
@@ -111,7 +119,9 @@ def analyze_candidates(job_description, cv_text_list):
         "phone": "string (extracted phone or empty)",
         "linkedin_url": "string (extracted linkedin url or empty)",
         "red_flags": ["string", "string"],
-        "skill_gaps": ["string", "string"]
+        "skill_gaps": ["string", "string"],
+        "personality_tags": ["string", "string"],
+        "is_competitor_match": boolean
     }
     """
 
@@ -199,6 +209,9 @@ def main():
                 norm_exp = w_exp / total_weight
                 norm_soft = w_soft / total_weight
 
+        # Competitor Watchlist
+        competitors_input = st.text_input("🎯 Target Companies (Competitor Watchlist)", placeholder="e.g. Spotify, Klarna, Volvo")
+
         blind_hiring = st.checkbox("Blind Hiring Mode (Hide Names)")
         min_score = st.slider("Minimum Match Score", 0, 100, 0)
         
@@ -266,7 +279,7 @@ def main():
                         text = extract_text_from_file(file)
                         cv_text_list.append({"name": file.name, "text": text})
                     
-                    json_response = analyze_candidates(job_description, cv_text_list)
+                    json_response = analyze_candidates(job_description, cv_text_list, competitors_input)
                     
                     # Clean up response if it contains markdown code blocks
                     clean_response = json_response.strip()
@@ -310,6 +323,8 @@ def main():
                                         display_df.at[i, 'linkedin_url'] = ""
                                         display_df.at[i, 'red_flags'] = []
                                         display_df.at[i, 'skill_gaps'] = []
+                                        display_df.at[i, 'personality_tags'] = []
+                                        display_df.at[i, 'is_competitor_match'] = False
                                         # Keep match_score visible or mask it? User said "blur names and hide reasoning". 
                                         # Usually score is a good teaser. Let's keep score but maybe blur it if requested, 
                                         # but user prompt said "show them in the table but blur the names and hide the reasoning".
@@ -371,7 +386,20 @@ def main():
                                     if is_masked:
                                         st.info("💎 **Pay to see full analysis, pros, cons, and interview questions.**")
                                     else:
-                                        st.write(f"**Summary:** {row['summary']}")
+                                        # Header with Name and Badges
+                                        header_col1, header_col2 = st.columns([3, 1])
+                                        with header_col1:
+                                            st.write(f"**Summary:** {row['summary']}")
+                                        with header_col2:
+                                            if row.get('is_competitor_match'):
+                                                st.error("🎯 **Competitor Match!**")
+                                        
+                                        # Personality Tags
+                                        tags = row.get('personality_tags', [])
+                                        if tags:
+                                            st.markdown("**Personality Vibe:** " + " ".join([f"`{tag}`" for tag in tags]))
+
+                                        # Contact Info
                                         
                                         # Contact Info
                                         contact_cols = st.columns(3)
