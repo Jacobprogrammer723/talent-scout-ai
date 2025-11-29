@@ -7,6 +7,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import docx
 import plotly.express as px
+import urllib.parse
 
 import time
 
@@ -393,6 +394,15 @@ def main():
                                         with header_col2:
                                             if row.get('is_competitor_match'):
                                                 st.error("🎯 **Competitor Match!**")
+                                            
+                                            # Hidden Gem Logic
+                                            # Criteria: Exp < 60, Skills > 80, Soft Skills > 80
+                                            score_skills = row.get('score_skills', 0)
+                                            score_exp = row.get('score_experience', 0)
+                                            score_soft = row.get('score_soft_skills', 0)
+                                            
+                                            if score_exp < 60 and score_skills > 80 and score_soft > 80:
+                                                st.success("💎 **Hidden Gem!**")
                                         
                                         # Personality Tags
                                         tags = row.get('personality_tags', [])
@@ -400,16 +410,33 @@ def main():
                                             st.markdown("**Personality Vibe:** " + " ".join([f"`{tag}`" for tag in tags]))
 
                                         # Contact Info
-                                        
-                                        # Contact Info
                                         contact_cols = st.columns(3)
-                                        if row.get('email'):
-                                            contact_cols[0].markdown(f"📧 **Email:** {row['email']}")
+                                        candidate_email = row.get('email', '')
+                                        
+                                        if candidate_email:
+                                            contact_cols[0].markdown(f"📧 **Email:** {candidate_email}")
                                         if row.get('phone'):
                                             contact_cols[1].markdown(f"📱 **Phone:** {row['phone']}")
                                         if row.get('linkedin_url'):
                                             contact_cols[2].markdown(f"🔗 [LinkedIn Profile]({row['linkedin_url']})")
                                         
+                                        # Smart Email Actions
+                                        if candidate_email:
+                                            st.markdown("---")
+                                            email_cols = st.columns(2)
+                                            
+                                            # Invite Email
+                                            subject_invite = f"Interview Invitation: {row['name']}"
+                                            body_invite = f"Hi {row['name']},\n\nI reviewed your application and was impressed by your profile. We would love to schedule an interview.\n\nBest,\nTalentScout Team"
+                                            mailto_invite = f"mailto:{candidate_email}?subject={urllib.parse.quote(subject_invite)}&body={urllib.parse.quote(body_invite)}"
+                                            email_cols[0].link_button("🟢 Draft Interview Invite", mailto_invite)
+                                            
+                                            # Rejection Email
+                                            subject_reject = f"Update on your application: {row['name']}"
+                                            body_reject = f"Hi {row['name']},\n\nThank you for your application. Unfortunately, we have decided to proceed with other candidates at this time.\n\nBest,\nTalentScout Team"
+                                            mailto_reject = f"mailto:{candidate_email}?subject={urllib.parse.quote(subject_reject)}&body={urllib.parse.quote(body_reject)}"
+                                            email_cols[1].link_button("🔴 Draft Rejection", mailto_reject)
+
                                         st.markdown("---")
                                         
                                         # Radar Chart
